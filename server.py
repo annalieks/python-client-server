@@ -26,36 +26,41 @@ class Server:
         while True:
             (client_socket, address) = self.socket.accept()
             client_socket.settimeout(4)
-            try:
-                threading.Thread(target=self.process_request,
+            threading.Thread(target=self.process_request,
                                  args=(client_socket,)).run()
-            except socket.timeout:
-                pass
-            finally:
-                client_socket.close()
 
     def process_request(self, client_socket):
-        while True:
-            header = client_socket.recv(self.header_size)
-            if header != b'1':
-                client_socket.close()
-                return
+        try:
+            while True:
+                message = Message()
+                commands = self.accept_message(client_socket)
 
-            body = client_socket.recv(self.body_size).decode() or ''
+                for command in commands:
+                    if command == 'Who':
+                        message.append(self.info_msg)
+                    else:
+                        try:
+                            message.append(self.process_fs_request(command))
+                        except Exception:
+                            message.append(self.error_msg)
+                self.send_response(client_socket, message)
 
-            logging.info(body)
-            message = Message()
+        except socket.timeout:
+            pass
+        except Exception:
+            pass
+        finally:
+            client_socket.close()
 
-            commands = body.split(';')
-            for command in commands:
-                if command == 'Who':
-                    message.append(self.info_msg)
-                else:
-                    try:
-                        message.append(self.process_fs_request(command))
-                    except Exception:
-                        message.append(self.error_msg)
-            self.send_response(client_socket, message)
+    def accept_message(self, client_socket):
+        header = client_socket.recv(self.header_size)
+        if header != b'1':
+            client_socket.close()
+            raise AttributeError
+
+        body = client_socket.recv(self.body_size).decode() or ''
+        logging.info(body)
+        return body.split(';')
 
     def process_fs_request(self, command):
         args = command.split(':', 1)

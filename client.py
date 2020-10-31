@@ -39,9 +39,10 @@ if __name__ == '__main__':
     print('Hi! This is a simple client that supports "files", "dir", '
           '"content" and "Who" commands. Enter your command or "quit" to quit.')
     msg = ''
-    while msg != 'quit':
+    while True:
         msg = input()
         if not msg:
             continue
+        if msg == 'quit':
+            break
         client.process_message(msg)
-
